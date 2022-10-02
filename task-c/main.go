@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"github.com/lucsky/cuid"
+	"math"
 	"math/rand"
 	"os"
 	"os/signal"
@@ -136,8 +137,8 @@ func pathfinder() {
 		lock.Lock()
 		var ai, bi int
 		for {
-			ai := towns[rand.Intn(tl)]
-			bi := towns[rand.Intn(tl)]
+			ai = rand.Intn(tl)
+			bi = rand.Intn(tl)
 			if ai != bi {
 				break
 			}
@@ -145,6 +146,65 @@ func pathfinder() {
 		if ai > bi {
 			ai, bi = bi, ai
 		}
+
+		toVisit := make([]bool, tl)
+		dist := make([]int, tl)
+		for i := 0; i < tl; i += 1 {
+			toVisit[i] = true
+			dist[i] = math.MaxInt
+		}
+		dist[ai] = 0
+
+		for i := 0; i < tl; i += 1 {
+			// select town
+			curTownI, curTownDist := -1, math.MaxInt
+			for k := 0; k < tl; k += 1 {
+				d := dist[k]
+				if toVisit[k] && curTownDist > d {
+					curTownI = k
+					curTownDist = d
+				}
+			}
+			if curTownI == -1 {
+				break
+			}
+			toVisit[curTownI] = false
+			curTown := towns[curTownI]
+
+			// calc related roads
+			for _, r := range roads {
+				var toTown string
+				// if related road
+				if curTown == r.a {
+					toTown = r.b
+				} else if curTown == r.b {
+					toTown = r.a
+				} else {
+					continue
+				}
+
+				var toTownI int
+				for ti, tn := range towns {
+					if toTown == tn {
+						toTownI = ti
+						break
+					}
+				}
+
+				if dist[toTownI] > (curTownDist + r.cost) {
+					dist[toTownI] = curTownDist + r.cost
+				}
+			}
+		}
+
+		a, b := towns[ai], towns[bi]
+		res := dist[bi]
+		if res == math.MaxInt {
+			fmt.Printf("Dist: %s -> %s = INF\n", a, b)
+		} else {
+			fmt.Printf("Dist: %s -> %s = %d\n", a, b, res)
+		}
+
 		lock.Unlock()
 	}
 }
